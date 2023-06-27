@@ -1,14 +1,19 @@
 package de.kosmos_lab.platform.plugins.weather.web;
 
-import de.dfki.baall.helper.webserver.exceptions.ParameterNotFoundException;
-import de.kosmos_lab.kosmos.platform.web.KosmoSHttpServletRequest;
+import de.kosmos_lab.platform.web.KosmoSHttpServletRequest;
+import de.kosmos_lab.platform.web.servlets.KosmoSServlet;
+import de.kosmos_lab.web.exceptions.ParameterNotFoundException;
+
 import de.kosmos_lab.platform.plugins.weather.WeatherUtils;
 import de.kosmos_lab.platform.plugins.weather.data.WeatherEntry;
 import de.kosmos_lab.platform.plugins.weather.data.WeatherSpeed;
 import de.kosmos_lab.platform.plugins.weather.data.WeatherTemperature;
 import de.kosmos_lab.platform.plugins.weather.data.WeatherUnit;
 import de.kosmos_lab.platform.plugins.weather.data.WeatherValue;
+import de.kosmos_lab.web.server.WebServer;
 import jakarta.servlet.http.HttpServletResponse;
+import org.eclipse.jetty.util.UrlEncoded;
+import org.json.JSONObject;
 
 import java.io.IOException;
 
@@ -23,7 +28,7 @@ public class WeatherWebHelper {
         try {
             return WeatherUtils.searchEnum(WeatherUnit.class, request.getParameter("units", true));
         } catch (ParameterNotFoundException e) {
-           //e.printStackTrace();
+            //e.printStackTrace();
         }
         return WeatherUnit.METRIC;
 
@@ -35,168 +40,152 @@ public class WeatherWebHelper {
         response.getWriter().print(text);
     }
 
-    public static void send(KosmoSHttpServletRequest request, HttpServletResponse response, Object value, WeatherUnit units) throws IOException {
+    public static String get(Object value, WeatherUnit units) {
         if (value == null) {
-            response.setStatus(204);
-
-            return;
+            return null;
         }
         if (value instanceof WeatherTemperature) {
             if (units == WeatherUnit.METRIC) {
-                sendText(request, response, String.format(DoubleFormat, ((WeatherTemperature) value).get_C()));
-                return;
+                return (String.format(DoubleFormat, ((WeatherTemperature) value).get_C()));
             }
             if (units == WeatherUnit.STANDARD) {
-                sendText(request, response, String.format(DoubleFormat, ((WeatherTemperature) value).get_K()));
-                return;
+                return (String.format(DoubleFormat, ((WeatherTemperature) value).get_K()));
             }
             if (units == WeatherUnit.IMPERIAL) {
-                sendText(request, response, String.format(DoubleFormat, ((WeatherTemperature) value).get_F()));
-                return;
+                return (String.format(DoubleFormat, ((WeatherTemperature) value).get_F()));
+
             }
         }
         if (value instanceof WeatherSpeed) {
             if (units == WeatherUnit.METRIC) {
-                sendText(request, response, String.format(DoubleFormat, ((WeatherSpeed) value).get_kilometer_hour()));
-                return;
+                return (String.format(DoubleFormat, ((WeatherSpeed) value).get_kilometer_hour()));
+
             }
             if (units == WeatherUnit.STANDARD) {
-                sendText(request, response, String.format(DoubleFormat, ((WeatherSpeed) value).get_meter_sec()));
-                return;
+                return (String.format(DoubleFormat, ((WeatherSpeed) value).get_meter_sec()));
+
             }
             if (units == WeatherUnit.IMPERIAL) {
-                sendText(request, response, String.format(DoubleFormat, ((WeatherSpeed) value).get_miles_hour()));
-                return;
+                return (String.format(DoubleFormat, ((WeatherSpeed) value).get_miles_hour()));
+
             }
         }
         if (value instanceof Double) {
-            sendText(request, response, String.format(DoubleFormat, ((Double) value)));
-            return;
-
+            return (String.format(DoubleFormat, ((Double) value)));
         }
         if (value instanceof Integer) {
-            sendText(request, response, String.format(IntFormat, ((Integer) value)));
-            return;
+            return (String.format(IntFormat, ((Integer) value)));
         }
         if (value instanceof String) {
-            sendText(request, response, (String)value);
-            return;
+            return (String) value;
         }
-        response.setStatus(500);
+        return null;
 
     }
 
-    public static void sendValue(KosmoSHttpServletRequest request, HttpServletResponse response, WeatherEntry w, WeatherValue value) throws IOException, ParameterNotFoundException {
-        if (value == null) {
-            value = WeatherUtils.searchEnum(WeatherValue.class, request.getParameter("value", true));
-        }
-        if ( value == null ) {
 
-            response.sendError(500,"could not find value");
+    public static void sendValue(KosmoSHttpServletRequest request, HttpServletResponse response, WeatherEntry w, WeatherValue value) throws IOException, ParameterNotFoundException {
+        WeatherUnit units = getUnit(request);
+        String all = request.getParameter("all", false);
+
+        if (all != null) {
+            boolean doAll = false;
+            if (all.length() == 0) {
+                doAll = true;
+            } else {
+                doAll = request.getBoolean("all", true);
+            }
+            if (doAll) {
+                JSONObject jsonObject = new JSONObject();
+                for (WeatherValue v : WeatherValue.values()) {
+
+                    if (v != null) {
+                        jsonObject.put(v.name(), getValue(w, v, units));
+                    }
+                }
+                KosmoSServlet.sendJSON(request, response, jsonObject);
+                return;
+            }
+        }
+        String svalues = request.getParameter("values", false);
+
+
+        if (svalues != null) {
+            String[] vals = svalues.split(",");
+            if (vals.length > 0) {
+                JSONObject jsonObject = new JSONObject();
+                for (String v : vals) {
+                    value = WeatherUtils.searchEnum(WeatherValue.class, v);
+                    if (value != null) {
+                        jsonObject.put(value.name(), getValue(w, value, units));
+                    }
+                }
+                KosmoSServlet.sendJSON(request, response, jsonObject);
+                return;
+            }
+        }
+        String svalue = request.getParameter("value", false);
+        if (value == null) {
+            value = WeatherUtils.searchEnum(WeatherValue.class, svalue);
+        }
+        if (value == null) {
+            response.sendError(WebServer.STATUS_NOT_FOUND, String.format("could not find value %s - please check the name"));
             return;
         }
-        WeatherUnit units = getUnit(request);
+        String v = getValue(w, value, units);
+        if (v != null) {
+            sendText(request, response, v);
+
+            return;
+        }
+        response.sendError(WebServer.STATUS_NOT_FOUND, "could not find the data you were looking for");
+        return;
+    }
+
+    public static String getValue(WeatherEntry w, WeatherValue value, WeatherUnit units) {
+        if (value == null) {
+            return null;
+        }
         switch (value) {
             case temp:
-                send(request, response, w.getTemperature(), units);
-                return;
-
-            case temp_max:
-
-                /*if (w.getTempMax() != null) {
-                    if (units == WeatherUnit.METRIC) {
-                        sendText(request, response, String.format(DoubleFormat, w.getTempMax().get_C()));
-                        return;
-                    }
-                    if (units == WeatherUnit.IMPERIAL) {
-                        sendText(request, response, String.format(DoubleFormat, w.getTempMax().get_F()));
-                        return;
-                    }
-                    sendText(request, response, String.format(DoubleFormat, w.getTempMax().get_K()));
-                    return;
-
-                }
-                response.setStatus(204);*/
-                send(request, response, w.getTempMax(), units);
-                return;
-            case temp_min:
-                send(request, response, w.getTempMin(), units);
-
-                return;
-
+                return get(w.getTemperature(), units);
+            case tempMax:
+                return get(w.getTempMax(), units);
+            case tempMin:
+                return get(w.getTempMin(), units);
             case feelsLike:
-                send(request, response, w.getFeelsLike(), units);
-
-                return;
-
+                return get(w.getFeelsLike(), units);
             case pressure:
-                send(request, response, w.getPressure(), units);
-
-                return;
+                return get(w.getPressure(), units);
             case humidity:
-                send(request, response, w.getHumidity(), units);
-
-                return;
+                return get(w.getHumidity(), units);
             case weatherCode:
-                send(request, response, w.getWeatherCode(), units);
-
-                return;
+                return get(w.getWeatherCode(), units);
             case weatherIcon:
-                send(request, response, w.getWeatherIcon(), units);
-
-                return;
+                return get(w.getWeatherIcon(), units);
             case cloudiness:
-                send(request, response, w.getCloudiness(), units);
-
-                return;
+                return get(w.getCloudiness(), units);
             case rain1h:
-                send(request, response, w.getRain1h(), units);
-
-                return;
-
+                return get(w.getRain1h(), units);
             case rain3h:
-                send(request, response, w.getRain3h(), units);
-
-                return;
+                return get(w.getRain3h(), units);
             case snow1h:
-                send(request, response, w.getSnow1h(), units);
-
-                return;
+                return get(w.getSnow1h(), units);
             case snow3h:
-                send(request, response, w.getSnow3h(), units);
-
-                return;
+                return get(w.getSnow3h(), units);
             case windDegree:
-                send(request, response, w.getWindDegree(), units);
-
-                return;
+                return get(w.getWindDegree(), units);
             case windSpeed:
-                send(request, response, w.getWindSpeed(), units);
-
-                return;
+                return get(w.getWindSpeed(), units);
             case windGust:
-                send(request, response, w.getWindGust(), units);
-
-                return;
+                return get(w.getWindGust(), units);
             case visibility:
-                send(request, response, w.getVisibility(), units);
-
-                return;
+                return get(w.getVisibility(), units);
         }
+        return null;
     }
 
     public static String getParameters(KosmoSHttpServletRequest request) {
-
-        try {
-            String query = request.getString("q");
-            if (query != null) {
-                return String.format("q=%s", query);
-            }
-
-
-        } catch (ParameterNotFoundException ex) {
-
-        }
         try {
 
             String lon = request.getString("lon");
@@ -208,6 +197,17 @@ public class WeatherWebHelper {
         } catch (ParameterNotFoundException ex) {
 
         }
+        try {
+            String query = request.getString("q");
+            if (query != null) {
+                return String.format("q=%s", UrlEncoded.encodeString(query));
+            }
+
+
+        } catch (ParameterNotFoundException ex) {
+
+        }
+
         return null;
     }
 }

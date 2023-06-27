@@ -1,6 +1,7 @@
 package de.kosmos_lab.platform.plugins.weather.openweathermap;
 
-import de.kosmos_lab.kosmos.client.HTTPClient;
+
+import de.kosmos_lab.platform.client.HTTPClient;
 import de.kosmos_lab.platform.plugins.weather.WeatherProvider;
 import de.kosmos_lab.platform.plugins.weather.data.WeatherCurrent;
 import de.kosmos_lab.platform.plugins.weather.data.WeatherEntry;
@@ -8,7 +9,6 @@ import de.kosmos_lab.platform.plugins.weather.data.WeatherForecast;
 import de.kosmos_lab.platform.plugins.weather.data.WeatherSpeed;
 import de.kosmos_lab.platform.plugins.weather.data.WeatherTemperature;
 import org.eclipse.jetty.http.HttpMethod;
-import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -177,7 +177,7 @@ public class OpenWeatherMapProvider implements WeatherProvider {
     }
 
     @Override
-    public void update(@NotNull WeatherForecast forecast) {
+    public void update(@Nonnull WeatherForecast forecast) {
         JSONObject fullJson = getForecastJSON(forecast.getParameter());
         if (fullJson != null) {
 
@@ -195,7 +195,7 @@ public class OpenWeatherMapProvider implements WeatherProvider {
     }
 
     @Override
-    public void update(@NotNull WeatherCurrent weatherCurrent) {
+    public void update(@Nonnull WeatherCurrent weatherCurrent) {
         JSONObject json = getCurrentWeatherJSON(weatherCurrent.getParameter());
         OpenWeatherMapProvider.updateFromJSON(weatherCurrent.getData(), json);
         weatherCurrent.updated = System.currentTimeMillis();

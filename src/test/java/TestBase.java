@@ -1,6 +1,7 @@
-import de.kosmos_lab.kosmos.client.KosmoSClient;
-import de.kosmos_lab.kosmos.platform.KosmoSController;
-import de.kosmos_lab.kosmos.platform.persistence.Constants.RunMode;
+
+import de.kosmos_lab.platform.KosmoSController;
+import de.kosmos_lab.platform.client.KosmoSClient;
+import de.kosmos_lab.platform.persistence.Constants.RunMode;
 import de.kosmos_lab.utils.FileUtils;
 import de.kosmos_lab.utils.JSONChecker;
 import de.kosmos_lab.utils.KosmosFileUtils;
@@ -59,7 +60,7 @@ public class TestBase {
 
                     while (true) {
                         try {
-                            if (!((line = input.readLine()) != null)) break;
+                            if ((line = input.readLine()) == null) break;
                         } catch (IOException e) {
                             e.printStackTrace();
                         }

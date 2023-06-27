@@ -2,36 +2,25 @@ package de.kosmos_lab.platform.plugins.weather.data;
 
 import de.kosmos_lab.platform.plugins.weather.WeatherProvider;
 import org.json.JSONArray;
-import org.json.JSONObject;
 
-import javax.annotation.CheckForNull;
 import java.util.LinkedList;
 
 public class WeatherForecast extends WeatherData {
     protected LinkedList<WeatherEntry> forecasts;
-    @Override
-    protected void update() {
-        provider.update(this);
-    }
 
     public WeatherForecast(WeatherProvider provider, String parameter) {
         super(provider, parameter);
     }
 
+    @Override
+    protected void update() {
+        provider.update(this);
+    }
 
-
-
-
-
-
-    public WeatherEntry getForecast(int slot) {
+    public WeatherEntry getForecast(int slot) throws IndexOutOfBoundsException{
         slot = slot - 1;
-        try {
-            return this.forecasts.get(slot);
-        } catch (IndexOutOfBoundsException i) {
-            i.printStackTrace();
-        }
-        return null;
+        return this.forecasts.get(slot);
+
     }
 
     public JSONArray toJSONArray() {
@@ -45,10 +34,9 @@ public class WeatherForecast extends WeatherData {
     }
 
     public void clear() {
-        if ( this.forecasts == null ) {
+        if (this.forecasts == null) {
             this.forecasts = new LinkedList<>();
-        }
-        else {
+        } else {
             this.forecasts.clear();
         }
     }

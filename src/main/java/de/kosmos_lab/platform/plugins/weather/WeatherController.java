@@ -1,8 +1,6 @@
 package de.kosmos_lab.platform.plugins.weather;
 
-import de.kosmos_lab.kosmos.annotations.media.Schema;
-import de.kosmos_lab.kosmos.doc.openapi.OpenApiParser;
-import de.kosmos_lab.kosmos.platform.IController;
+import de.kosmos_lab.platform.IController;
 import de.kosmos_lab.platform.plugins.weather.data.WeatherCurrent;
 import de.kosmos_lab.platform.plugins.weather.data.WeatherForecast;
 import de.kosmos_lab.platform.plugins.weather.openweathermap.OpenWeatherMapProvider;
@@ -19,7 +17,7 @@ public class WeatherController {
     private static WeatherController instance;
 
     private final IController controller;
-    private LinkedList<WeatherProvider> providers = new LinkedList<>();
+    private final LinkedList<WeatherProvider> providers = new LinkedList<>();
 
 
     public WeatherController(IController controller) {
